@@ -12,11 +12,13 @@ the Containerfile; the client downloads the base image and packages itself at bu
 time. Users who prefer prebuilt images set `OCI_NATIVE_REGISTRY` and the launcher pulls
 `$OCI_NATIVE_REGISTRY/<app>:<version>` instead of building.
 
-Two casks are built this way. `galculator` is the minimal example: the Containerfile
+Three casks are built this way. `galculator` is the minimal example: the Containerfile
 installs the app from alpine packages. `signal-oci` is the real-world shape: a
 debian-based image where the launcher bakes in the exact `.deb` the cask downloaded and
-checksummed, so brew's `sha256` covers the binary that ends up in the image. Read the
-casks alongside this document.
+checksummed, so brew's `sha256` covers the binary that ends up in the image. `zoom-oci`
+follows the same deb pattern and exercises every host access the launchers support:
+GPU, speaker, microphone, and camera in one app. Read the casks alongside this
+document.
 
 ## Why containers
 
