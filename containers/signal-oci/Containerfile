@@ -1,0 +1,13 @@
+# The launcher copies the brew-verified signal-desktop .deb from the
+# Caskroom into the build context before building.
+FROM docker.io/library/debian:trixie-slim
+
+COPY signal-desktop.deb /tmp/signal-desktop.deb
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends /tmp/signal-desktop.deb fonts-dejavu \
+    && rm /tmp/signal-desktop.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+# The container is the sandbox; Chromium's own sandbox cannot nest inside
+# a rootless userns, hence --no-sandbox.
+ENTRYPOINT ["signal-desktop", "--no-sandbox", "--ozone-platform-hint=auto"]

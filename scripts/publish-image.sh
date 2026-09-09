@@ -14,7 +14,7 @@ fi
 
 app=$1
 push=${2:-}
-registry=${REGISTRY:-ghcr.io/oci-native}
+registry=${REGISTRY:-8gcr.container-registry.dev/oci-native}
 
 containerfile="containers/$app/Containerfile"
 [[ -f "$containerfile" ]] || { echo "error: no $containerfile" >&2; exit 66; }
@@ -26,8 +26,15 @@ version=$(sed -n 's/^ *version "\(.*\)"$/\1/p' "$cask_file")
 
 if command -v podman >/dev/null 2>&1; then engine=podman; else engine=docker; fi
 
+context=$(mktemp -d)
+trap 'rm -rf "$context"' EXIT
+cp "containers/$app/Containerfile" "$context/"
+if [[ -x "containers/$app/prepare.sh" ]]; then
+  "containers/$app/prepare.sh" "$version" "$context"
+fi
+
 image="$registry/$app"
-"$engine" build -t "$image:$version" -t "$image:latest" "containers/$app"
+"$engine" build -t "$image:$version" -t "$image:latest" "$context"
 echo "built $image:$version"
 
 if [[ "$push" == "--push" ]]; then

@@ -1,13 +1,22 @@
 # OCI casks: apps delivered as container images
 
 Most casks in this tap install an upstream `.deb` or AppImage. OCI casks work
-differently: the app ships as a container image under `ghcr.io/oci-native`, and the cask
-installs a small launcher that runs it with podman or docker. To the desktop it looks
-like any other installed app. There is a `.desktop` entry, an icon, and a binary on
-`PATH`. Underneath, the app runs in a rootless container with only the sockets it needs.
+differently: the app is defined by a Containerfile in this repo, and the cask installs a
+small launcher that builds the image locally on first run and runs it with podman or
+docker. To the desktop it looks like any other installed app. There is a `.desktop`
+entry, an icon, and a binary on `PATH`. Underneath, the app runs in a rootless container
+with only the sockets it needs.
 
-`galculator` is the first cask built this way. Read `Casks/g/galculator.rb` alongside
-this document.
+There is no required registry. `brew tap` clones this repo, so every user already has
+the Containerfile; the client downloads the base image and packages itself at build
+time. Users who prefer prebuilt images set `OCI_NATIVE_REGISTRY` and the launcher pulls
+`$OCI_NATIVE_REGISTRY/<app>:<version>` instead of building.
+
+Two casks are built this way. `galculator` is the minimal example: the Containerfile
+installs the app from alpine packages. `signal-oci` is the real-world shape: a
+debian-based image where the launcher bakes in the exact `.deb` the cask downloaded and
+checksummed, so brew's `sha256` covers the binary that ends up in the image. Read the
+casks alongside this document.
 
 ## Why containers
 
@@ -20,18 +29,22 @@ stays clean. Rootless podman means no daemon and no root.
 
 Each OCI app has three parts, and they agree on one version string:
 
-1. `containers/<app>/Containerfile` builds the image. Alpine base, the app, fonts, an
-   icon theme, and mesa for GPU rendering. `ENTRYPOINT` is the app binary.
+1. `containers/<app>/Containerfile` builds the image; `ENTRYPOINT` is the app binary.
+   An optional `prepare.sh` next to it populates the build context (the signal one
+   fetches the versioned `.deb` when a registry seed is built in CI; on clients the
+   launcher copies the Caskroom `.deb` instead, so nothing downloads twice).
 2. `Casks/<letter>/<app>.rb` is the cask. Its `version` is the image tag. The cask
    writes a launcher script and a `.desktop` entry via `preflight_steps`; nothing is
    downloaded at install time except the small version-anchor artifact (see below).
-3. `.github/workflows/publish-images.yml` builds and pushes
-   `ghcr.io/oci-native/<app>:<version>` whenever a Containerfile changes on main, using
-   `scripts/publish-image.sh`. The script reads the tag from the cask, so image and cask
-   cannot drift apart.
+3. `scripts/publish-image.sh` (and the dispatch-only publish workflow) can seed a
+   registry for `OCI_NATIVE_REGISTRY` users. The default registry is
+   `8gcr.container-registry.dev/oci-native`; override it with the `REGISTRY` env
+   var locally or the repository variable in CI. The script reads the image tag from the
+   cask, so image and cask cannot drift apart.
 
-The image is pulled lazily, on first launch, by the launcher. Install stays instant and
-offline. `brew uninstall` removes the launcher and desktop entry but leaves the image:
+The image is built lazily, on first launch, by the launcher, from the Containerfile in
+the local tap clone (found via `brew --repository oci-native/pkgs`). Install stays
+instant. `brew uninstall` removes the launcher and desktop entry but leaves the image:
 brew runs uninstall steps in a sandbox that cannot reach the container storage, so the
 cask's caveats print the `podman rmi` command instead of failing silently.
 
@@ -49,7 +62,8 @@ workflow builds the matching image once the Containerfile picks up the new versi
 The generated script, linked into the brew prefix by the `binary` stanza:
 
 - picks podman if present, docker otherwise
-- pulls the image if it is missing locally
+- builds `localhost/oci-native/<app>:<version>` from the tap's Containerfile if the
+  image is missing, or pulls from `$OCI_NATIVE_REGISTRY` when that is set
 - creates `~/.local/share/oci-apps/<app>` and mounts it as the container's `HOME`, so
   settings and caches persist across runs
 - mounts the Wayland socket when `WAYLAND_DISPLAY` is set, and falls back to X11
@@ -77,11 +91,15 @@ portals) will need those mounts added per app.
 
 ## Current limits
 
-- Images are amd64 only, matching the `depends_on arch: :x86_64` in the casks. arm64
-  needs multi-arch builds in the publish workflow.
-- The image tag is pinned but not the digest. Digest pinning would make the pull
-  reproducible; it needs the publish workflow to write the digest back into the cask.
-- Audio (pipewire socket) and dbus are not mounted. Fine for a calculator, needed for
-  chat or media apps.
+- Casks declare `depends_on arch: :x86_64`; local builds would work on arm64 hosts
+  whenever the base image and packages exist for it, so this can loosen per app once
+  tested.
+- A local build follows the Containerfile at whatever state the tap clone is in; the
+  base image tag is pinned there, but package versions inside resolve at build time.
+- Old image tags pile up across upgrades; the caveats show the `rmi` cleanup.
+- Audio (pipewire socket) and dbus are not mounted. Fine for a calculator; for
+  signal-oci this means no desktop notifications and no calls yet.
+- Electron apps run with --no-sandbox inside the container, since Chromium's sandbox
+  cannot nest inside a rootless user namespace. The container is the sandbox.
 - Each cask embeds its own launcher script. If the count grows, the shared logic should
   move to a small `oci-run` formula the casks depend on.
