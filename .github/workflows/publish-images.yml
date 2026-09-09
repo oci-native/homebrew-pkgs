@@ -1,0 +1,41 @@
+name: Publish OCI images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'containers/**'
+      - 'scripts/publish-image.sh'
+  workflow_dispatch:
+    inputs:
+      app:
+        description: App to build (containers/<app>); empty builds all
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-images
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build and push
+        env:
+          APP: ${{ inputs.app }}
+        run: |
+          if [[ -n "${APP-}" ]]; then
+            ./scripts/publish-image.sh "$APP" --push
+          else
+            for dir in containers/*/; do
+              ./scripts/publish-image.sh "$(basename "$dir")" --push
+            done
+          fi
