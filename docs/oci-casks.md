@@ -69,7 +69,8 @@ The generated script, linked into the brew prefix by the `binary` stanza:
   settings and caches persist across runs
 - mounts the Wayland socket when `WAYLAND_DISPLAY` is set, and falls back to X11
   (`/tmp/.X11-unix` plus `XAUTHORITY`) when `DISPLAY` is set
-- passes `/dev/dri` for GPU rendering when it exists
+- passes `/dev/dri` for GPU rendering when it exists, with `--group-add keep-groups`
+  under podman so the host's render group membership still applies inside
 - uses `--userns=keep-id` under podman so file ownership in the state dir matches the
   host user
 
