@@ -1,0 +1,29 @@
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - task: bump
+
+  bump:
+    desc: Bump all casks to their latest upstream versions
+    cmds:
+      - task: bump:signal-desktop
+
+  bump:signal-desktop:
+    desc: Bump signal-desktop from the Signal apt Packages index
+    cmds:
+      - ./scripts/bump-apt-cask.sh
+        Casks/s/signal-desktop.rb
+        https://updates.signal.org/desktop/apt/dists/xenial/main/binary-amd64/Packages
+        signal-desktop
+
+  lint:
+    desc: Run brew style across the tap (requires Homebrew + tapped repo)
+    cmds:
+      - brew style --cask oci-native/pkgs
+
+  audit:
+    desc: Run brew audit across the tap (requires Homebrew + tapped repo)
+    cmds:
+      - brew audit --tap oci-native/pkgs

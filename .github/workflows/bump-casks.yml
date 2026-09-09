@@ -1,0 +1,39 @@
+name: Bump casks
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bump-casks
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3
+      - id: bump
+        run: task bump
+      - uses: peter-evans/create-pull-request@v7
+        if: steps.bump.outputs.updated == 'true'
+        with:
+          commit-message: 'chore(cask): bump signal-desktop to ${{ steps.bump.outputs.version }}'
+          title: 'Bump signal-desktop to ${{ steps.bump.outputs.version }}'
+          body: |
+            Automated bump from the Signal apt `Packages` index.
+
+            `version` and `sha256` are taken directly from the index published
+            at updates.signal.org, so the hash matches the official pool .deb.
+          branch: bump/signal-desktop
+          delete-branch: true
+          signoff: true
