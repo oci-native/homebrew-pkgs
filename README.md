@@ -1,10 +1,8 @@
 # homebrew-pkgs
 
-A [Homebrew](https://brew.sh) tap of **Linux desktop apps installed the native way** — real
-`.desktop` entries, icons, and binaries on your `PATH`, managed entirely by `brew`.
-
-No fighting the distro. No copying files around by hand. `brew install`, and the app shows
-up in your launcher like it was always there. `brew uninstall`, and it's gone without a trace.
+A [Homebrew](https://brew.sh) tap that installs Linux desktop apps with proper desktop
+integration: a `.desktop` entry your launcher can see, an icon, and a binary on your
+`PATH`. Homebrew tracks every file, so `brew uninstall` removes all of it.
 
 ## Install
 
@@ -27,29 +25,25 @@ brew install --cask oci-native/pkgs/signal-desktop
 
 ## How it works
 
-Upstream vendors ship Linux desktop apps as `.deb` packages or AppImages. Each cask here
-turns one of those into a native-feeling install without touching the system package
-manager:
+Vendors ship Linux desktop apps as `.deb` packages or AppImages. Each cask here turns one
+of those into a normal Homebrew install without touching the system package manager. The
+artifact comes from the official upstream URL and is pinned by `sha256`. For `.deb`
+payloads, sandboxed `preflight_steps` unpack the archive with `bsdtar`, so the same cask
+works on any distro, Debian or not. The app binary is linked into the Homebrew prefix.
+The `.desktop` entry (with `Exec` rewritten to the brew path) and the icon go under
+`~/.local/share`, which is where launchers, docks, and app grids look.
 
-- the artifact is fetched from the **official upstream URL** and pinned by `sha256`
-- `.deb` payloads are unpacked by sandboxed `preflight_steps` (no `dpkg` needed, works on
-  any distro)
-- the binary is linked into the Homebrew prefix, so it is on your `PATH`
-- the `.desktop` entry (with `Exec` rewritten to the brew prefix) and icon land under
-  `~/.local/share`, so app launchers, docks, and grids pick the app up like a distro
-  package would
-
-Everything is tracked by Homebrew, so `brew uninstall --cask <name>` removes the binary
-link, desktop entry, and icon cleanly, and `zap` clears app data on request.
+`brew uninstall --cask <name>` removes the binary link, desktop entry, and icon. `zap`
+also clears the app's user data if you ask for it.
 
 ## Staying up to date
 
 Casks carry `livecheck` blocks pointing at their upstream release channel. A scheduled
-workflow runs [`brew bump`](https://docs.brew.sh/Manpage#bump-options-formulacask-)
-— the same machinery
-[Homebrew/homebrew-cask uses](https://github.com/Homebrew/homebrew-cask/blob/main/.github/workflows/autobump.yml)
-— inside the official `ghcr.io/homebrew/brew` container. Outdated casks get an automatic
-version + `sha256` bump PR. Users just run:
+workflow runs [`brew bump`](https://docs.brew.sh/Manpage#bump-options-formulacask-), the
+same tool
+[Homebrew/homebrew-cask runs on its own casks](https://github.com/Homebrew/homebrew-cask/blob/main/.github/workflows/autobump.yml),
+inside the `ghcr.io/homebrew/brew` container. When a cask falls behind, the workflow
+opens a PR with the new version and `sha256`. As a user you only run:
 
 ```sh
 brew update && brew upgrade
@@ -59,8 +53,8 @@ brew update && brew upgrade
 
 1. Create `Casks/<first-letter>/<token>.rb` (homebrew-cask layout, token named after the
    upstream package).
-2. Point `url` at the official upstream artifact; take `sha256` from the vendor's
-   published checksums where available (apt `Packages` indexes carry them for free).
+2. Point `url` at the official upstream artifact. Take `sha256` from the vendor's
+   published checksums where available; apt `Packages` indexes already carry them.
 3. Add a `livecheck` block so autobump can track it.
 4. Handle arch explicitly: `depends_on arch: :x86_64` when upstream is amd64-only, or
    `arch arm: ..., intel: ...` with `arm64_linux:`/`x86_64_linux:` sha keys when both are
