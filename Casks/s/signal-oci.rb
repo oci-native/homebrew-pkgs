@@ -96,6 +96,9 @@ cask "signal-oci" do
       if [ -e /dev/dri ]; then
         set -- --device /dev/dri "$@"
       fi
+      for dev in /dev/video*; do
+        [ -e "$dev" ] && set -- --device "$dev" "$@"
+      done
       if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pulse/native" ]; then
         RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
         set -- -e PULSE_SERVER=unix:/run/xdg/pulse/native -v "$RUNTIME/pulse/native:/run/xdg/pulse/native" "$@"
