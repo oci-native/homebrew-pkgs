@@ -2,8 +2,10 @@ name: Renovate base images
 
 # Self-hosted Renovate scoped to the dockerfile manager: bumps FROM tags
 # in containers/*/Containerfile. App versions stay with the brew autobump
-# workflow. Needs secret RENOVATE_TOKEN (classic PAT, repo scope) - the
-# built-in GITHUB_TOKEN is not supported by Renovate.
+# workflow. Runs on the built-in GITHUB_TOKEN as the github-actions bot;
+# the username and git author are set explicitly because the token has no
+# user identity for Renovate to look up. Known trade-off: PRs opened by
+# GITHUB_TOKEN do not trigger other workflows.
 
 on:
   schedule:
@@ -12,7 +14,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: renovate-base-images
@@ -27,8 +30,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: renovatebot/github-action@v46
         with:
-          token: ${{ secrets.RENOVATE_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
         env:
           RENOVATE_REPOSITORIES: oci-native/homebrew-pkgs
           RENOVATE_ONBOARDING: 'false'
+          RENOVATE_USERNAME: github-actions[bot]
+          RENOVATE_GIT_AUTHOR: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           LOG_LEVEL: info
