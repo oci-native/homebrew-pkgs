@@ -1,0 +1,15 @@
+FROM docker.io/library/alpine:3.22
+
+# GTK app + fonts + icons; mesa-dri-gallium for GPU rendering via /dev/dri
+RUN apk add --no-cache \
+    galculator \
+    ttf-dejavu \
+    adwaita-icon-theme \
+    mesa-dri-gallium \
+    mesa-egl
+
+# Prefer native Wayland, fall back to X11 automatically
+ENV GDK_BACKEND=wayland,x11 \
+    XDG_RUNTIME_DIR=/run/xdg
+
+ENTRYPOINT ["galculator"]
