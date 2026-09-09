@@ -96,6 +96,10 @@ cask "signal-oci" do
       if [ -e /dev/dri ]; then
         set -- --device /dev/dri "$@"
       fi
+      if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pulse/native" ]; then
+        RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        set -- -e PULSE_SERVER=unix:/run/xdg/pulse/native -v "$RUNTIME/pulse/native:/run/xdg/pulse/native" "$@"
+      fi
       if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ]; then
         RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
         set -- -e "WAYLAND_DISPLAY=$WAYLAND_DISPLAY" -e XDG_RUNTIME_DIR=/run/xdg -v "$RUNTIME/$WAYLAND_DISPLAY:/run/xdg/$WAYLAND_DISPLAY" "$@"

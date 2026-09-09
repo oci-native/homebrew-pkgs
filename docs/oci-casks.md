@@ -71,6 +71,8 @@ The generated script, linked into the brew prefix by the `binary` stanza:
   (`/tmp/.X11-unix` plus `XAUTHORITY`) when `DISPLAY` is set
 - passes `/dev/dri` for GPU rendering when it exists, with `--group-add keep-groups`
   under podman so the host's render group membership still applies inside
+- mounts the PulseAudio socket (`$XDG_RUNTIME_DIR/pulse/native`) with `PULSE_SERVER`
+  set, when the host has one (signal-oci)
 - uses `--userns=keep-id` under podman so file ownership in the state dir matches the
   host user
 
@@ -99,8 +101,8 @@ portals) will need those mounts added per app.
 - A local build follows the Containerfile at whatever state the tap clone is in; the
   base image tag is pinned there, but package versions inside resolve at build time.
 - Old image tags pile up across upgrades; the caveats show the `rmi` cleanup.
-- Audio (pipewire socket) and dbus are not mounted. Fine for a calculator; for
-  signal-oci this means no desktop notifications and no calls yet.
+- signal-oci mounts the PulseAudio socket (pipewire-pulse on modern hosts), so audio
+  playback works. dbus is still not mounted, so desktop notifications stay off.
 - Electron apps run with --no-sandbox inside the container, since Chromium's sandbox
   cannot nest inside a rootless user namespace. The container is the sandbox.
 - Each cask embeds its own launcher script. If the count grows, the shared logic should
