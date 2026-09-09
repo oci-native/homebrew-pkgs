@@ -73,6 +73,9 @@ The generated script, linked into the brew prefix by the `binary` stanza:
   under podman so the host's render group membership still applies inside
 - mounts the PulseAudio socket (`$XDG_RUNTIME_DIR/pulse/native`) with `PULSE_SERVER`
   set, when the host has one (signal-oci)
+- mounts the PipeWire core socket (`$XDG_RUNTIME_DIR/pipewire-0`) for capture: the
+  pulse socket covers playback and pulse-API recording, while apps that talk PipeWire
+  directly (Chromium/WebRTC mic input) need the core socket (signal-oci)
 - uses `--userns=keep-id` under podman so file ownership in the state dir matches the
   host user
 
@@ -101,8 +104,8 @@ portals) will need those mounts added per app.
 - A local build follows the Containerfile at whatever state the tap clone is in; the
   base image tag is pinned there, but package versions inside resolve at build time.
 - Old image tags pile up across upgrades; the caveats show the `rmi` cleanup.
-- signal-oci mounts the PulseAudio socket (pipewire-pulse on modern hosts), so audio
-  playback works. dbus is still not mounted, so desktop notifications stay off.
+- signal-oci mounts the PulseAudio and PipeWire sockets, so playback and microphone
+  capture work. dbus is still not mounted, so desktop notifications stay off.
 - Electron apps run with --no-sandbox inside the container, since Chromium's sandbox
   cannot nest inside a rootless user namespace. The container is the sandbox.
 - Each cask embeds its own launcher script. If the count grows, the shared logic should
