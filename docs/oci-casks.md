@@ -34,15 +34,15 @@ Each OCI app has three parts, and they agree on one version string:
 1. `containers/<app>/Containerfile` builds the image; `ENTRYPOINT` is the app binary.
    A Containerfile that starts with `COPY cask.deb` receives the cask's own artifact:
    on clients the launcher copies the sha256-verified `.deb` from the Caskroom, and in
-   CI `publish-image.sh` gets the same file via `brew fetch --cask`. One download path,
+   CI (`task build:<app>`) gets the same file via `brew fetch --cask`. One download path,
    verified in both places.
 2. `Casks/<letter>/<app>.rb` is the cask. Its `version` is the image tag. The cask
    writes a launcher script and a `.desktop` entry via `preflight_steps`; nothing is
    downloaded at install time except the small version-anchor artifact (see below).
-3. `scripts/publish-image.sh` (and the dispatch-only publish workflow) can seed a
+3. The Taskfile's `build:<app>`/`push:<app>` tasks (and the publish workflow) can seed a
    registry for `OCI_NATIVE_REGISTRY` users. The default registry is
    `8gcr.container-registry.dev/oci-native`; override it with the `REGISTRY` env
-   var locally or the repository variable in CI. The script reads the image tag from the
+   var locally or the repository variable in CI. The task reads the image tag from the
    cask, so image and cask cannot drift apart.
 
 The image is built lazily, on first launch, by the launcher, from the Containerfile in
@@ -91,7 +91,7 @@ portals) will need those mounts added per app.
 ## Adding an OCI app
 
 1. Write `containers/<app>/Containerfile`. Test it locally:
-   `./scripts/publish-image.sh <app>` builds without pushing.
+   `task build:<app>` builds without pushing.
 2. Run it by hand with the socket mounts from the launcher above and check the window
    appears.
 3. Copy `Casks/g/galculator.rb` as a template. Change the token, the image name, the
