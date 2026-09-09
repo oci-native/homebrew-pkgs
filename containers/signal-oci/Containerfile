@@ -2,10 +2,10 @@
 # Caskroom into the build context before building.
 FROM docker.io/library/debian:trixie-slim
 
-COPY signal-desktop.deb /tmp/signal-desktop.deb
+COPY cask.deb /tmp/cask.deb
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends /tmp/signal-desktop.deb fonts-dejavu \
-    && rm /tmp/signal-desktop.deb \
+    && apt-get install -y --no-install-recommends /tmp/cask.deb fonts-dejavu \
+    && rm /tmp/cask.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # The container is the sandbox; Chromium's own sandbox cannot nest inside

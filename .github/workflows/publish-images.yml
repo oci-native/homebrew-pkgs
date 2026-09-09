@@ -27,6 +27,8 @@ jobs:
       REGISTRY: ${{ vars.REGISTRY || '8gcr.container-registry.dev/oci-native' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Tap this checkout
+        run: brew tap oci-native/pkgs "$GITHUB_WORKSPACE"
       - name: Log in to registry
         run: echo "${{ secrets.REGISTRY_PASSWORD }}" | podman login "${REGISTRY%%/*}" -u "${{ secrets.REGISTRY_USER }}" --password-stdin
       - name: Build and push

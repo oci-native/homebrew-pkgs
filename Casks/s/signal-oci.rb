@@ -27,9 +27,7 @@ cask "signal-oci" do
         args:         ["-c",
                        "t='{{HOMEBREW_PREFIX}}/Homebrew/Library/Taps/oci-native/homebrew-pkgs/containers'; " \
                        "echo '==> containers/signal-oci/Containerfile'; " \
-                       "cat \"$t/signal-oci/Containerfile\"; " \
-                       "echo; echo '==> containers/signal-oci/prepare.sh'; " \
-                       "cat \"$t/signal-oci/prepare.sh\""],
+                       "cat \"$t/signal-oci/Containerfile\""],
         print_stdout: true
     run "/usr/bin/bsdtar", args: ["-xf", "signal-desktop_#{version}_amd64.deb", "data.tar.xz"], chdir: "."
     run "/usr/bin/bsdtar",
@@ -80,7 +78,7 @@ cask "signal-oci" do
           BUILD_DIR=$(mktemp -d)
           trap 'rm -rf "$BUILD_DIR"' EXIT
           cp "$CONTEXT/Containerfile" "$BUILD_DIR/"
-          cp "$DEB" "$BUILD_DIR/signal-desktop.deb"
+          cp "$DEB" "$BUILD_DIR/cask.deb"
           echo "$APP: building $IMAGE" >&2
           "$ENGINE" build -t "$IMAGE" "$BUILD_DIR"
         fi

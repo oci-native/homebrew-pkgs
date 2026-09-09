@@ -29,8 +29,12 @@ if command -v podman >/dev/null 2>&1; then engine=podman; else engine=docker; fi
 context=$(mktemp -d)
 trap 'rm -rf "$context"' EXIT
 cp "containers/$app/Containerfile" "$context/"
-if [[ -x "containers/$app/prepare.sh" ]]; then
-  "containers/$app/prepare.sh" "$version" "$context"
+
+# A Containerfile that copies cask.deb gets the brew-fetched, sha256
+# verified artifact of the matching cask.
+if grep -q '^COPY cask.deb' "containers/$app/Containerfile"; then
+  brew fetch --cask "oci-native/pkgs/$app"
+  cp "$(brew --cache --cask "oci-native/pkgs/$app")" "$context/cask.deb"
 fi
 
 image="$registry/$app"

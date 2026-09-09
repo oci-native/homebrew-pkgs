@@ -30,9 +30,10 @@ stays clean. Rootless podman means no daemon and no root.
 Each OCI app has three parts, and they agree on one version string:
 
 1. `containers/<app>/Containerfile` builds the image; `ENTRYPOINT` is the app binary.
-   An optional `prepare.sh` next to it populates the build context (the signal one
-   fetches the versioned `.deb` when a registry seed is built in CI; on clients the
-   launcher copies the Caskroom `.deb` instead, so nothing downloads twice).
+   A Containerfile that starts with `COPY cask.deb` receives the cask's own artifact:
+   on clients the launcher copies the sha256-verified `.deb` from the Caskroom, and in
+   CI `publish-image.sh` gets the same file via `brew fetch --cask`. One download path,
+   verified in both places.
 2. `Casks/<letter>/<app>.rb` is the cask. Its `version` is the image tag. The cask
    writes a launcher script and a `.desktop` entry via `preflight_steps`; nothing is
    downloaded at install time except the small version-anchor artifact (see below).
