@@ -1,0 +1,16 @@
+# The launcher copies the brew-verified zoom .deb from the Caskroom
+# into the build context before building.
+FROM docker.io/library/debian:trixie-slim
+
+ARG APP_VERSION
+LABEL org.opencontainers.image.title="Zoom" \
+      org.opencontainers.image.version="${APP_VERSION}"
+
+COPY cask.deb /tmp/cask.deb
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends /tmp/cask.deb \
+       fonts-dejavu libgl1 libegl1 libgl1-mesa-dri libxcb-cursor0 \
+    && rm /tmp/cask.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+ENTRYPOINT ["/usr/bin/zoom"]
