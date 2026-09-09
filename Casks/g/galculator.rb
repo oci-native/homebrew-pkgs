@@ -75,7 +75,9 @@ cask "galculator" do
       set -- "$IMAGE" "$@"
       set -- --security-opt label=disable -e HOME=/data -v "$STATE:/data" "$@"
       if [ "$ENGINE" = podman ]; then
-        set -- --userns=keep-id "$@"
+        # keep-groups carries the host's render/video group membership
+        # into the container so /dev/dri render nodes stay accessible
+        set -- --userns=keep-id --group-add keep-groups "$@"
       fi
       if [ -e /dev/dri ]; then
         set -- --device /dev/dri "$@"

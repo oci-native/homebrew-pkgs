@@ -4,7 +4,7 @@ FROM docker.io/library/debian:trixie-slim
 
 COPY cask.deb /tmp/cask.deb
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends /tmp/cask.deb fonts-dejavu \
+    && apt-get install -y --no-install-recommends /tmp/cask.deb fonts-dejavu libgl1-mesa-dri \
     && rm /tmp/cask.deb \
     && rm -rf /var/lib/apt/lists/*
 
