@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Bump base image tags in containers/*/Containerfile; app versions are handled by the brew autobump workflow.",
+  "enabledManagers": ["dockerfile"],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["major", "minor"],
+      "groupName": "base images"
+    }
+  ],
+  "pinDigests": false,
+  "labels": ["base-image"],
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 5
+}
