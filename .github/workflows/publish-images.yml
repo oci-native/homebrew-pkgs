@@ -44,6 +44,7 @@ jobs:
       - name: Build and push
         env:
           APP: ${{ inputs.app }}
+          BUILD_CACHE: '1'
         run: |
           if [[ -n "${APP-}" ]]; then
             task "push:$APP"

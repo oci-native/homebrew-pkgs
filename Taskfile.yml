@@ -30,7 +30,13 @@ tasks:
           brew fetch --cask 'oci-native/pkgs/{{.APP}}'
           cp "$(brew --cache --cask 'oci-native/pkgs/{{.APP}}')" "$context/cask.deb"
         fi
-        {{.ENGINE}} build --build-arg 'APP_VERSION={{.VERSION}}' \
+        # BUILD_CACHE=1 shares layers through the registry (podman only),
+        # so ephemeral CI runners reuse layers from previous runs.
+        cache_args=""
+        if [ -n "${BUILD_CACHE:-}" ] && [ "$(basename '{{.ENGINE}}')" = podman ]; then
+          cache_args="--layers --cache-from={{.REGISTRY}}/cache/{{.APP}} --cache-to={{.REGISTRY}}/cache/{{.APP}} --cache-ttl=168h"
+        fi
+        {{.ENGINE}} build $cache_args --build-arg 'APP_VERSION={{.VERSION}}' \
           -t '{{.REGISTRY}}/{{.APP}}:{{.VERSION}}' \
           -t '{{.REGISTRY}}/{{.APP}}:latest' "$context"
       - echo 'built {{.REGISTRY}}/{{.APP}}:{{.VERSION}}'
