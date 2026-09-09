@@ -23,6 +23,14 @@ cask "signal-oci" do
            target: "#{Dir.home}/.local/share/icons/hicolor/512x512/apps/signal-oci.png"
 
   preflight_steps do
+    run "/bin/sh",
+        args:         ["-c",
+                       "t='{{HOMEBREW_PREFIX}}/Homebrew/Library/Taps/oci-native/homebrew-pkgs/containers'; " \
+                       "echo '==> containers/signal-oci/Containerfile'; " \
+                       "cat \"$t/signal-oci/Containerfile\"; " \
+                       "echo; echo '==> containers/signal-oci/prepare.sh'; " \
+                       "cat \"$t/signal-oci/prepare.sh\""],
+        print_stdout: true
     run "/usr/bin/bsdtar", args: ["-xf", "signal-desktop_#{version}_amd64.deb", "data.tar.xz"], chdir: "."
     run "/usr/bin/bsdtar",
         args:  ["-xf", "data.tar.xz", "./usr/share/icons/hicolor/512x512/apps/signal-desktop.png"],

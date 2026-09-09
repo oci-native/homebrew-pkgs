@@ -22,6 +22,12 @@ cask "galculator" do
            target: "#{Dir.home}/.local/share/applications/galculator-oci.desktop"
 
   preflight_steps do
+    run "/bin/sh",
+        args:         ["-c",
+                       "t='{{HOMEBREW_PREFIX}}/Homebrew/Library/Taps/oci-native/homebrew-pkgs/containers'; " \
+                       "echo '==> containers/galculator/Containerfile'; " \
+                       "cat \"$t/galculator/Containerfile\""],
+        print_stdout: true
     mkdir_p "oci/bin"
     mkdir_p "oci/share"
     write_file "oci/bin/galculator", <<~SCRIPT
