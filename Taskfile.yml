@@ -1,0 +1,75 @@
+version: '3'
+
+vars:
+  REGISTRY: '{{.REGISTRY | default "8gcr.container-registry.dev/oci-native"}}'
+  ENGINE:
+    sh: command -v podman || command -v docker
+
+tasks:
+  build:*:
+    desc: Build one app's OCI image (tag read from its cask version)
+    vars:
+      APP: '{{index .MATCH 0}}'
+      CASK:
+        sh: find Casks -name '{{.APP}}.rb' -print -quit
+      VERSION:
+        sh: sed -n 's/^ *version "\(.*\)"$/\1/p' '{{.CASK}}'
+    preconditions:
+      - sh: test -f 'containers/{{.APP}}/Containerfile'
+        msg: 'no containers/{{.APP}}/Containerfile'
+      - sh: test -n '{{.VERSION}}'
+        msg: 'no version stanza found for {{.APP}}'
+    cmds:
+      # A Containerfile that copies cask.deb gets the cask's own artifact,
+      # brew-fetched and sha256-verified.
+      - |
+        context=$(mktemp -d)
+        trap 'rm -rf "$context"' EXIT
+        cp 'containers/{{.APP}}/Containerfile' "$context/"
+        if grep -q '^COPY cask.deb' 'containers/{{.APP}}/Containerfile'; then
+          brew fetch --cask 'oci-native/pkgs/{{.APP}}'
+          cp "$(brew --cache --cask 'oci-native/pkgs/{{.APP}}')" "$context/cask.deb"
+        fi
+        {{.ENGINE}} build --build-arg 'APP_VERSION={{.VERSION}}' \
+          -t '{{.REGISTRY}}/{{.APP}}:{{.VERSION}}' \
+          -t '{{.REGISTRY}}/{{.APP}}:latest' "$context"
+      - echo 'built {{.REGISTRY}}/{{.APP}}:{{.VERSION}}'
+
+  push:*:
+    desc: Build and push one app's image to the registry
+    vars:
+      APP: '{{index .MATCH 0}}'
+      VERSION:
+        sh: sed -n 's/^ *version "\(.*\)"$/\1/p' "$(find Casks -name '{{.APP}}.rb' -print -quit)"
+    cmds:
+      - task: 'build:{{.APP}}'
+      - '{{.ENGINE}} push {{.REGISTRY}}/{{.APP}}:{{.VERSION}}'
+      - '{{.ENGINE}} push {{.REGISTRY}}/{{.APP}}:latest'
+
+  build-all:
+    desc: Build every app image
+    vars:
+      APPS:
+        sh: ls containers
+    cmds:
+      - for: {var: APPS}
+        task: 'build:{{.ITEM}}'
+
+  push-all:
+    desc: Build and push every app image
+    vars:
+      APPS:
+        sh: ls containers
+    cmds:
+      - for: {var: APPS}
+        task: 'push:{{.ITEM}}'
+
+  lint:
+    desc: Run brew style across the tap
+    cmds:
+      - brew style --cask oci-native/pkgs
+
+  audit:
+    desc: Run brew audit across the tap
+    cmds:
+      - brew audit --tap oci-native/pkgs
