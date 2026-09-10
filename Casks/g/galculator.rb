@@ -73,7 +73,20 @@ cask "galculator" do
       mkdir -p "$STATE/.config" "$STATE/.cache"
 
       set -- "$IMAGE" "$@"
-      set -- --security-opt label=disable -e HOME=/data -v "$STATE:/data" "$@"
+      # Stable hostname keeps per-run identity consistent for app locks.
+      set -- --security-opt label=disable --hostname "$APP" -e HOME=/data -v "$STATE:/data" "$@"
+      # Host fonts, read-only: the image ships only DejaVu; everything
+      # else (indic scripts, emoji, user fonts) comes from the host.
+      # The image's fontconfig is taught these paths in the Containerfile.
+      if [ -d /usr/share/fonts ]; then
+        set -- -v /usr/share/fonts:/usr/local/share/fonts/host:ro "$@"
+      fi
+      if [ -d "$HOME/.local/share/fonts" ]; then
+        set -- -v "$HOME/.local/share/fonts:/data/.local/share/fonts:ro" "$@"
+      fi
+      if [ -d "$HOME/.fonts" ]; then
+        set -- -v "$HOME/.fonts:/data/.fonts:ro" "$@"
+      fi
       if [ "$ENGINE" = podman ]; then
         # keep-groups carries the host's render/video group membership
         # into the container so /dev/dri render nodes stay accessible
