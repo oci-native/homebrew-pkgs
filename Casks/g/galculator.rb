@@ -82,6 +82,10 @@ cask "galculator" do
       if [ -e /dev/dri ]; then
         set -- --device /dev/dri "$@"
       fi
+      if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
+        RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        set -- -e DBUS_SESSION_BUS_ADDRESS=unix:path=/run/xdg/bus -v "$RUNTIME/bus:/run/xdg/bus" "$@"
+      fi
       if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ]; then
         RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
         set -- -e "WAYLAND_DISPLAY=$WAYLAND_DISPLAY" -v "$RUNTIME/$WAYLAND_DISPLAY:/run/xdg/$WAYLAND_DISPLAY" "$@"
