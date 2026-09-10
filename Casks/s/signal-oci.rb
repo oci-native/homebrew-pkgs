@@ -107,6 +107,10 @@ cask "signal-oci" do
         RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
         set -- -v "$RUNTIME/pipewire-0:/run/xdg/pipewire-0" "$@"
       fi
+      if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
+        RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        set -- -e DBUS_SESSION_BUS_ADDRESS=unix:path=/run/xdg/bus -v "$RUNTIME/bus:/run/xdg/bus" "$@"
+      fi
       if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ]; then
         RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
         set -- -e "WAYLAND_DISPLAY=$WAYLAND_DISPLAY" -e XDG_RUNTIME_DIR=/run/xdg -v "$RUNTIME/$WAYLAND_DISPLAY:/run/xdg/$WAYLAND_DISPLAY" "$@"
@@ -144,8 +148,8 @@ cask "signal-oci" do
     prebuilt image from your own registry instead. App data lives in
     ~/.local/share/oci-apps/signal-oci.
 
-    No dbus or audio is mounted yet, so desktop notifications and calls
-    do not work in this variant.
+    Audio, microphone, camera, and desktop notifications (dbus) are
+    wired through.
 
     Uninstalling the cask leaves the image behind (brew's sandbox cannot
     reach the container storage). Remove it with:
