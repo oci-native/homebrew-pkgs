@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.title="OBS Studio" \
 COPY cask.pkg /tmp/cask.pkg
 RUN pacman -Syu --noconfirm \
     && pacman -U --noconfirm /tmp/cask.pkg \
-    && pacman -S --noconfirm --needed ttf-dejavu qt6-wayland \
+    && pacman -S --noconfirm --needed ttf-dejavu qt6-wayland libfdk-aac \
     && rm /tmp/cask.pkg \
     && pacman -Scc --noconfirm
 
