@@ -85,7 +85,9 @@ cask "brave-oci" do
       mkdir -p "$STATE/.config" "$STATE/.cache"
 
       set -- "$IMAGE" "$@"
-      set -- --security-opt label=disable --shm-size=1g -e HOME=/data -v "$STATE:/data" "$@"
+      # Stable hostname lets Chromium recognise its own stale profile
+      # lock after an unclean exit instead of refusing to start.
+      set -- --security-opt label=disable --shm-size=1g --hostname "$APP" -e HOME=/data -v "$STATE:/data" "$@"
       if [ "$ENGINE" = podman ]; then
         # keep-groups carries the host's render/video group membership
         # into the container so /dev/dri render nodes stay accessible

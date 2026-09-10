@@ -17,10 +17,12 @@ RUN apt-get update \
          | awk '/^Package: brave-keyring$/{p=1} p&&/^Filename:/{print $2; exit}') \
     && curl -fsSL -o /tmp/keyring.deb "$base/$keyring" \
     && apt-get install -y --no-install-recommends /tmp/keyring.deb /tmp/cask.deb \
-       fonts-dejavu libgl1 libegl1 libgl1-mesa-dri \
+       fonts-dejavu libgl1 libegl1 libgl1-mesa-dri libpulse0 \
     && rm /tmp/cask.deb /tmp/keyring.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # The container is the sandbox; Chromium's own sandbox cannot nest inside
 # a rootless userns, hence --no-sandbox.
-ENTRYPOINT ["brave-browser", "--no-sandbox", "--ozone-platform-hint=auto"]
+# --ozone-platform-hint=auto still picks X11 here and dies in GLX, so
+# choose the platform from the environment the launcher passes in.
+ENTRYPOINT ["/bin/sh", "-c", "p=x11; [ -n \"$WAYLAND_DISPLAY\" ] && p=wayland; exec brave-browser --no-sandbox --ozone-platform=$p \"$@\"", "--"]
