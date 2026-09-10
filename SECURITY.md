@@ -13,9 +13,9 @@ then "Report a vulnerability". Do not open a public issue for anything exploitab
   access denied unless a step declares it.
 - OCI images are built locally from Containerfiles in this repo. The base image tag is
   pinned; the app payload is the same sha256-verified artifact the cask downloaded.
-- Containers run rootless, without the host home directory, host network namespace, or
-  session dbus. Only the display socket, GPU and video devices, audio sockets, and a
-  per-app state directory are mounted.
+- Containers run rootless, without the host home directory or host network namespace.
+  Only the display socket, GPU and video devices, audio sockets, the dbus session
+  socket (for notifications), and a per-app state directory are mounted.
 
 ## Known trade-offs
 
