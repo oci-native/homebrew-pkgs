@@ -39,6 +39,9 @@ cask "galculator" do
 
       APP="galculator"
       VERSION="{{version}}"
+      # Digest of the signed image; the publish workflow rewrites this
+      # line after every push (version stays as the side comment).
+      DIGEST="" # {{version}}
       STATE="${XDG_DATA_HOME:-$HOME/.local/share}/oci-apps/$APP"
 
       if command -v podman >/dev/null 2>&1; then
@@ -54,7 +57,11 @@ cask "galculator" do
       # build when the pull fails (offline, or the registry lacks the
       # tag). OCI_NATIVE_BUILD=1 skips the pull entirely.
       REGISTRY="${OCI_NATIVE_REGISTRY:-8gcr.container-registry.dev/oci-native}"
-      IMAGE="$REGISTRY/$APP:$VERSION"
+      if [ -n "$DIGEST" ]; then
+        IMAGE="$REGISTRY/$APP@$DIGEST"
+      else
+        IMAGE="$REGISTRY/$APP:$VERSION"
+      fi
       PULLED=""
       if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
         if [ -z "${OCI_NATIVE_BUILD:-}" ]; then
