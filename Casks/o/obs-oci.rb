@@ -1,22 +1,23 @@
 cask "obs-oci" do
-  version "30.2.3+dfsg-3"
-  sha256 "25c24a956f35db063d847dc5797c79ce50eb7931842d6b8201f22b9cfe16d2ee"
+  version "32.2.2-1"
+  sha256 "160a66705327d25c617965bc2abbd92101443072a186ab682ee3f39d6c49746b"
 
   # The brew-verified .deb stays in the Caskroom; the launcher bakes it
   # into a debian-based image on first run.
-  url "https://deb.debian.org/debian/pool/main/o/obs-studio/obs-studio_#{version}_amd64.deb"
+  url "https://archive.archlinux.org/packages/o/obs-studio/obs-studio-#{version}-x86_64.pkg.tar.zst"
   name "OBS Studio (OCI)"
   desc "Screen and camera recorder running inside a rootless container"
   homepage "https://obsproject.com/"
 
   livecheck do
-    url "https://sources.debian.org/api/src/obs-studio/"
+    url "https://archlinux.org/packages/extra/x86_64/obs-studio/json/"
     strategy :json do |json|
-      json["versions"]&.find { |v| v["suites"]&.include?("trixie") }&.dig("version")
+      "#{json["pkgver"]}-#{json["pkgrel"]}" if json["pkgver"]
     end
   end
 
   depends_on arch: :x86_64
+  container type: :naked
 
   binary "oci/bin/obs-oci"
   artifact "oci/share/obs-oci.desktop",
@@ -31,9 +32,9 @@ cask "obs-oci" do
                        "echo '==> containers/obs-oci/Containerfile'; " \
                        "cat \"$t/obs-oci/Containerfile\""],
         print_stdout: true
-    run "/usr/bin/bsdtar", args: ["-xf", "obs-studio_#{version}_amd64.deb", "data.tar.xz"], chdir: "."
     run "/usr/bin/bsdtar",
-        args:  ["-xf", "data.tar.xz", "./usr/share/icons/hicolor/256x256/apps/com.obsproject.Studio.png"],
+        args:  ["-xf", "obs-studio-#{version}-x86_64.pkg.tar.zst",
+                "usr/share/icons/hicolor/256x256/apps/com.obsproject.Studio.png"],
         chdir: "."
     mkdir_p "oci/bin"
     mkdir_p "oci/share"
@@ -70,19 +71,19 @@ cask "obs-oci" do
         if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
           TAP_DIR=$(brew --repository oci-native/pkgs 2>/dev/null || true)
           CONTEXT="$TAP_DIR/containers/$APP"
-          DEB="{{HOMEBREW_PREFIX}}/Caskroom/$APP/$VERSION/obs-studio_${VERSION}_amd64.deb"
+          PKG="{{HOMEBREW_PREFIX}}/Caskroom/$APP/$VERSION/obs-studio-${VERSION}-x86_64.pkg.tar.zst"
           if [ ! -f "$CONTEXT/Containerfile" ]; then
             echo "$APP: no Containerfile at $CONTEXT (is the tap installed?)" >&2
             exit 1
           fi
-          if [ ! -f "$DEB" ]; then
-            echo "$APP: missing $DEB (reinstall the cask?)" >&2
+          if [ ! -f "$PKG" ]; then
+            echo "$APP: missing $PKG (reinstall the cask?)" >&2
             exit 1
           fi
           BUILD_DIR=$(mktemp -d)
           trap 'rm -rf "$BUILD_DIR"' EXIT
           cp "$CONTEXT/Containerfile" "$BUILD_DIR/"
-          cp "$DEB" "$BUILD_DIR/cask.deb"
+          cp "$PKG" "$BUILD_DIR/cask.pkg"
           echo "$APP: building $IMAGE" >&2
           "$ENGINE" build --build-arg "APP_VERSION=$VERSION" -t "$IMAGE" "$BUILD_DIR"
         fi
@@ -142,8 +143,8 @@ cask "obs-oci" do
 
   caveats <<~EOS
     Runs inside a container via podman (or docker). On first launch the
-    image is built locally from the tap's Containerfile using the .deb
-    this cask downloaded and verified; set OCI_NATIVE_REGISTRY to pull a
+    image is built locally from the tap's Containerfile using the arch
+    package this cask downloaded and verified; set OCI_NATIVE_REGISTRY to pull a
     prebuilt image from your own registry instead. App data lives in
     ~/.local/share/oci-apps/obs-oci.
 

@@ -1,17 +1,17 @@
-# The launcher copies the brew-verified obs-studio .deb from the
-# Caskroom into the build context before building.
-FROM docker.io/library/debian:trixie-slim
+# The launcher copies the brew-verified arch obs-studio package from
+# the Caskroom into the build context before building.
+FROM docker.io/library/archlinux:latest
 
 ARG APP_VERSION
 LABEL org.opencontainers.image.title="OBS Studio" \
       org.opencontainers.image.version="${APP_VERSION}"
 
-COPY cask.deb /tmp/cask.deb
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends /tmp/cask.deb \
-       fonts-dejavu libgl1 libegl1 libgl1-mesa-dri qt6-wayland \
-    && rm /tmp/cask.deb \
-    && rm -rf /var/lib/apt/lists/*
+COPY cask.pkg /tmp/cask.pkg
+RUN pacman -Syu --noconfirm \
+    && pacman -U --noconfirm /tmp/cask.pkg \
+    && pacman -S --noconfirm --needed ttf-dejavu qt6-wayland \
+    && rm /tmp/cask.pkg \
+    && pacman -Scc --noconfirm
 
 # Prefer native Wayland, fall back to X11
 ENV QT_QPA_PLATFORM="wayland;xcb"
