@@ -84,9 +84,11 @@ The generated script, linked into the brew prefix by the `binary` stanza:
   host user
 
 The container gets `--security-opt label=disable` so the socket mounts work on
-SELinux hosts. It does not get the session dbus, the host home directory, or the
-network namespace of the host. Apps that need dbus (tray icons, notifications,
-portals) will need those mounts added per app.
+SELinux hosts. It does not get the host home directory or the host's network
+namespace. The dbus session socket is mounted (with `DBUS_SESSION_BUS_ADDRESS`
+set), so desktop notifications reach the host; note that dbus EXTERNAL auth only
+works because `--userns=keep-id` keeps the in-container uid equal to the socket
+peer credential.
 
 ## Adding an OCI app
 
@@ -109,8 +111,7 @@ portals) will need those mounts added per app.
   base image tag is pinned there, but package versions inside resolve at build time.
 - Old image tags pile up across upgrades; the caveats show the `rmi` cleanup.
 - signal-oci mounts the PulseAudio and PipeWire sockets and passes `/dev/video*`
-  devices, so playback, microphone, and camera work. dbus is still not mounted, so
-  desktop notifications stay off.
+  devices, so playback, microphone, camera, and desktop notifications all work.
 - Electron apps run with --no-sandbox inside the container, since Chromium's sandbox
   cannot nest inside a rootless user namespace. The container is the sandbox.
 - Each cask embeds its own launcher script. If the count grows, the shared logic should
