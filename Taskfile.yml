@@ -18,7 +18,7 @@ tasks:
     vars:
       APP: '{{index .MATCH 0}}'
       VERSION: &cask-version
-        sh: sed -n 's/^ *version "\(.*\)"$/\1/p' "$(find Casks -name '{{.APP}}.rb' -print -quit)"
+        sh: sed -n 's/^ *version "\(.*\)"$/\1/p' "$(find Casks -name '{{.APP}}.rb' -print -quit)" | tr '+' '-'
     preconditions:
       - sh: test -f 'containers/{{.APP}}/Containerfile'
         msg: 'no containers/{{.APP}}/Containerfile'
