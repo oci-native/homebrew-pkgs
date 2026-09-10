@@ -8,7 +8,9 @@ on:
         required: false
   schedule:
     # Daily at 06:23 UTC
-    - cron: '23 6 * * *'
+    # Every 3 hours: catch upstream releases quickly so bump PRs, merges,
+    # and the image publish that follows stay close to upstream.
+    - cron: '23 */3 * * *'
 
 permissions:
   contents: write

@@ -1,9 +1,12 @@
 name: Publish OCI images
 
-# Optional: users build images locally from the tap's Containerfiles by
-# default. This workflow seeds a registry for OCI_NATIVE_REGISTRY users,
-# re-publishing whenever a cask bump or Containerfile change lands on
-# main. Configure repository variable REGISTRY (defaults to the org
+# Launchers pull from this registry first and only build locally as a
+# fallback, so this workflow is the primary image supply: it republishes
+# whenever a cask bump or Containerfile change lands on main, and a
+# 3-hourly cron rebuilds everything so refreshed base images and newly
+# merged bumps reach users quickly. Every image tag is the cask version,
+# and the payload inside is the same sha256-verified artifact the cask
+# pins. Configure repository variable REGISTRY (defaults to the org
 # registry) and secrets REGISTRY_USER / REGISTRY_PASSWORD first.
 
 on:
@@ -13,6 +16,8 @@ on:
       - 'Casks/**'
       - 'containers/**'
       - 'Taskfile.yml'
+  schedule:
+    - cron: '30 */3 * * *'
   workflow_dispatch:
     inputs:
       app:
