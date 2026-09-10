@@ -4,10 +4,12 @@ name: Publish OCI images
 # fallback, so this workflow is the primary image supply: it republishes
 # whenever a cask bump or Containerfile change lands on main, and a
 # 3-hourly cron rebuilds everything so refreshed base images and newly
-# merged bumps reach users quickly. Every image tag is the cask version,
-# and the payload inside is the same sha256-verified artifact the cask
-# pins. Configure repository variable REGISTRY (defaults to the org
-# registry) and secrets REGISTRY_USER / REGISTRY_PASSWORD first.
+# merged bumps reach users quickly. Each pushed image is cosign-signed
+# (keyless, GitHub OIDC), the signature is verified, and the signed
+# digest is committed back into the cask, where launchers pull by
+# digest with the version kept as a side comment. Configure repository
+# variable REGISTRY (defaults to the org registry) and secrets
+# REGISTRY_USER / REGISTRY_PASSWORD first.
 
 on:
   push:
@@ -25,7 +27,8 @@ on:
         required: false
 
 permissions:
-  contents: read
+  contents: write # pin signed digests back into the casks
+  id-token: write # cosign keyless signing
 
 concurrency:
   group: publish-images
@@ -34,7 +37,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       REGISTRY: ${{ vars.REGISTRY || '8gcr.container-registry.dev/oci-native' }}
     steps:
@@ -42,17 +45,29 @@ jobs:
       - uses: arduino/setup-task@v2
         with:
           version: 3
+      - uses: sigstore/cosign-installer@v3
       - name: Tap this checkout
         run: brew tap oci-native/pkgs "$GITHUB_WORKSPACE"
       - name: Log in to registry
         run: echo "${{ secrets.REGISTRY_PASSWORD }}" | podman login "${REGISTRY%%/*}" -u "${{ secrets.REGISTRY_USER }}" --password-stdin
-      - name: Build and push
+      - name: Release (push, sign, verify, pin digests)
         env:
           APP: ${{ inputs.app }}
           BUILD_CACHE: '1'
         run: |
           if [[ -n "${APP-}" ]]; then
-            task "push:$APP"
+            task "release:$APP"
           else
-            task push-all
+            task release-all
           fi
+      - name: Commit pinned digests
+        run: |
+          if git diff --quiet -- Casks; then
+            echo "digests unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks
+          git commit -m "chore: pin signed image digests [skip ci]"
+          git push origin HEAD:main
