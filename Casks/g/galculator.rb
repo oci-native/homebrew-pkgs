@@ -32,13 +32,16 @@ cask "galculator" do
     mkdir_p "oci/share"
     write_file "oci/bin/galculator", <<~SCRIPT
       #!/bin/sh
-      # Launcher for the oci-native galculator app. Builds the image locally
-      # from the tap's Containerfile on first run, or pulls it when
-      # OCI_NATIVE_REGISTRY points at a registry that carries it.
+      # Launcher for the oci-native galculator app: pulls the published
+      # image first, or builds it locally from the tap's Containerfile
+      # when the pull fails.
       set -eu
 
       APP="galculator"
       VERSION="{{version}}"
+      # Digest of the signed image; the publish workflow rewrites this
+      # line after every push (version stays as the side comment).
+      DIGEST="" # {{version}}
       STATE="${XDG_DATA_HOME:-$HOME/.local/share}/oci-apps/$APP"
 
       if command -v podman >/dev/null 2>&1; then
@@ -50,13 +53,27 @@ cask "galculator" do
         exit 1
       fi
 
-      if [ -n "${OCI_NATIVE_REGISTRY:-}" ]; then
-        IMAGE="$OCI_NATIVE_REGISTRY/$APP:$VERSION"
-        if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
+      # Registry-first: pull the published image, fall back to a local
+      # build when the pull fails (offline, or the registry lacks the
+      # tag). OCI_NATIVE_BUILD=1 skips the pull entirely.
+      REGISTRY="${OCI_NATIVE_REGISTRY:-8gcr.container-registry.dev/oci-native}"
+      if [ -n "$DIGEST" ]; then
+        IMAGE="$REGISTRY/$APP@$DIGEST"
+      else
+        IMAGE="$REGISTRY/$APP:$VERSION"
+      fi
+      PULLED=""
+      if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
+        if [ -z "${OCI_NATIVE_BUILD:-}" ]; then
           echo "$APP: pulling $IMAGE" >&2
-          "$ENGINE" pull "$IMAGE"
+          if "$ENGINE" pull "$IMAGE"; then
+            PULLED=1
+          fi
         fi
       else
+        PULLED=1
+      fi
+      if [ -z "$PULLED" ]; then
         IMAGE="localhost/oci-native/$APP:$VERSION"
         if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
           TAP_DIR=$(brew --repository oci-native/pkgs 2>/dev/null || true)
@@ -129,12 +146,15 @@ cask "galculator" do
 
   caveats <<~EOS
     Runs inside a container via podman (or docker). On first launch the
-    image is built locally from the tap's Containerfile; set
-    OCI_NATIVE_REGISTRY to pull a prebuilt image from your own registry
-    instead. App data lives in ~/.local/share/oci-apps/galculator.
+    image is pulled from 8gcr.container-registry.dev/oci-native, falling
+    back to a local build from the tap's Containerfile. Set
+    OCI_NATIVE_REGISTRY to use another registry, or OCI_NATIVE_BUILD=1
+    to always build locally. App data lives in
+    ~/.local/share/oci-apps/galculator.
 
     Uninstalling the cask leaves the image behind (brew's sandbox cannot
     reach the container storage). Remove it with:
-      podman rmi localhost/oci-native/galculator:#{version}
+      podman rmi 8gcr.container-registry.dev/oci-native/galculator:#{version}
+    (or localhost/oci-native/galculator:#{version} if it was built locally)
   EOS
 end

@@ -37,13 +37,16 @@ cask "signal-oci" do
     mkdir_p "oci/share"
     write_file "oci/bin/signal-oci", <<~SCRIPT
       #!/bin/sh
-      # Launcher for Signal running from a locally built OCI image. Builds
-      # the image from the tap's Containerfile plus the Caskroom .deb on
-      # first run, or pulls from OCI_NATIVE_REGISTRY when set.
+      # Launcher for Signal running from an OCI image: pulls the published
+      # image first, or builds it from the tap's Containerfile plus the
+      # Caskroom .deb when the pull fails.
       set -eu
 
       APP="signal-oci"
       VERSION="{{version}}"
+      # Digest of the signed image; the publish workflow rewrites this
+      # line after every push (version stays as the side comment).
+      DIGEST="" # {{version}}
       STATE="${XDG_DATA_HOME:-$HOME/.local/share}/oci-apps/$APP"
 
       if command -v podman >/dev/null 2>&1; then
@@ -55,13 +58,27 @@ cask "signal-oci" do
         exit 1
       fi
 
-      if [ -n "${OCI_NATIVE_REGISTRY:-}" ]; then
-        IMAGE="$OCI_NATIVE_REGISTRY/$APP:$VERSION"
-        if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
+      # Registry-first: pull the published image, fall back to a local
+      # build when the pull fails (offline, or the registry lacks the
+      # tag). OCI_NATIVE_BUILD=1 skips the pull entirely.
+      REGISTRY="${OCI_NATIVE_REGISTRY:-8gcr.container-registry.dev/oci-native}"
+      if [ -n "$DIGEST" ]; then
+        IMAGE="$REGISTRY/$APP@$DIGEST"
+      else
+        IMAGE="$REGISTRY/$APP:$VERSION"
+      fi
+      PULLED=""
+      if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
+        if [ -z "${OCI_NATIVE_BUILD:-}" ]; then
           echo "$APP: pulling $IMAGE" >&2
-          "$ENGINE" pull "$IMAGE"
+          if "$ENGINE" pull "$IMAGE"; then
+            PULLED=1
+          fi
         fi
       else
+        PULLED=1
+      fi
+      if [ -z "$PULLED" ]; then
         IMAGE="localhost/oci-native/$APP:$VERSION"
         if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
           TAP_DIR=$(brew --repository oci-native/pkgs 2>/dev/null || true)
@@ -157,16 +174,18 @@ cask "signal-oci" do
 
   caveats <<~EOS
     Runs inside a container via podman (or docker). On first launch the
-    image is built locally from the tap's Containerfile using the .deb
-    this cask downloaded and verified; set OCI_NATIVE_REGISTRY to pull a
-    prebuilt image from your own registry instead. App data lives in
-    ~/.local/share/oci-apps/signal-oci.
+    image is pulled from 8gcr.container-registry.dev/oci-native, falling
+    back to a local build from the tap's Containerfile using the .deb
+    this cask downloaded and verified. Set OCI_NATIVE_REGISTRY to use
+    another registry, or OCI_NATIVE_BUILD=1 to always build locally. App
+    data lives in ~/.local/share/oci-apps/signal-oci.
 
     Audio, microphone, camera, and desktop notifications (dbus) are
     wired through.
 
     Uninstalling the cask leaves the image behind (brew's sandbox cannot
     reach the container storage). Remove it with:
-      podman rmi localhost/oci-native/signal-oci:#{version}
+      podman rmi 8gcr.container-registry.dev/oci-native/signal-oci:#{version}
+    (or localhost/oci-native/signal-oci:#{version} if it was built locally)
   EOS
 end
