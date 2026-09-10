@@ -87,7 +87,9 @@ cask "signal-oci" do
       mkdir -p "$STATE/.config" "$STATE/.cache"
 
       set -- "$IMAGE" "$@"
-      set -- --security-opt label=disable --shm-size=1g -e HOME=/data -v "$STATE:/data" "$@"
+      # Stable hostname lets Chromium recognise its own stale profile
+      # lock after an unclean exit instead of refusing to start.
+      set -- --security-opt label=disable --shm-size=1g --hostname "$APP" -e HOME=/data -v "$STATE:/data" "$@"
       # Host fonts, read-only: the image ships only DejaVu; everything
       # else (indic scripts, emoji, user fonts) comes from the host.
       # The container's fontconfig scans these paths by default.
