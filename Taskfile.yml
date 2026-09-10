@@ -56,6 +56,42 @@ tasks:
       - '{{.ENGINE}} push {{.REGISTRY}}/{{.APP}}:{{.VERSION}}'
       - '{{.ENGINE}} push {{.REGISTRY}}/{{.APP}}:latest'
 
+  release:*:
+    desc: Push, sign, verify, and pin one app image by digest
+    vars:
+      APP: '{{index .MATCH 0}}'
+      VERSION: *cask-version
+    preconditions:
+      - sh: test "$(basename '{{.ENGINE}}')" = podman
+        msg: 'release needs podman (push --digestfile)'
+      - sh: command -v cosign
+        msg: 'cosign required to sign and verify'
+    cmds:
+      - task: 'build:{{.APP}}'
+      - |
+        digestfile=$(mktemp)
+        trap 'rm -f "$digestfile"' EXIT
+        {{.ENGINE}} push --digestfile "$digestfile" '{{.REGISTRY}}/{{.APP}}:{{.VERSION}}'
+        {{.ENGINE}} push '{{.REGISTRY}}/{{.APP}}:latest'
+        digest=$(cat "$digestfile")
+        ref='{{.REGISTRY}}/{{.APP}}@'"$digest"
+        cosign sign --yes "$ref"
+        cosign verify \
+          --certificate-identity-regexp 'https://github.com/oci-native/homebrew-pkgs/' \
+          --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+          "$ref" >/dev/null
+        # Pin the signed digest in the cask; version stays as the
+        # side comment, actions-pinning style.
+        cask=$(find Casks -name '{{.APP}}.rb' -print -quit)
+        sed -i "s|^\\( *DIGEST=\\)\"[^\"]*\" *#.*\$|\\1\"$digest\" # {{.VERSION}}|" "$cask"
+        echo "{{.APP}}: pinned $digest ({{.VERSION}})"
+
+  release-all:
+    desc: Push, sign, verify, and pin every app image
+    cmds:
+      - for: {var: APPS}
+        task: 'release:{{.ITEM}}'
+
   build-all:
     desc: Build every app image
     cmds:
