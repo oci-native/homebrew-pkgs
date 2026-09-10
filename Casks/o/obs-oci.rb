@@ -40,9 +40,9 @@ cask "obs-oci" do
     mkdir_p "oci/share"
     write_file "oci/bin/obs-oci", <<~SCRIPT
       #!/bin/sh
-      # Launcher for Signal running from a locally built OCI image. Builds
-      # the image from the tap's Containerfile plus the Caskroom .deb on
-      # first run, or pulls from OCI_NATIVE_REGISTRY when set.
+      # Launcher for OBS running from an OCI image: pulls the published
+      # image first, or builds it from the tap's Containerfile plus the
+      # Caskroom package when the pull fails.
       set -eu
 
       APP="obs-oci"
@@ -60,13 +60,23 @@ cask "obs-oci" do
         exit 1
       fi
 
-      if [ -n "${OCI_NATIVE_REGISTRY:-}" ]; then
-        IMAGE="$OCI_NATIVE_REGISTRY/$APP:$TAG"
-        if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
+      # Registry-first: pull the published image, fall back to a local
+      # build when the pull fails (offline, or the registry lacks the
+      # tag). OCI_NATIVE_BUILD=1 skips the pull entirely.
+      REGISTRY="${OCI_NATIVE_REGISTRY:-8gcr.container-registry.dev/oci-native}"
+      IMAGE="$REGISTRY/$APP:$TAG"
+      PULLED=""
+      if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
+        if [ -z "${OCI_NATIVE_BUILD:-}" ]; then
           echo "$APP: pulling $IMAGE" >&2
-          "$ENGINE" pull "$IMAGE"
+          if "$ENGINE" pull "$IMAGE"; then
+            PULLED=1
+          fi
         fi
       else
+        PULLED=1
+      fi
+      if [ -z "$PULLED" ]; then
         IMAGE="localhost/oci-native/$APP:$TAG"
         if ! "$ENGINE" image inspect "$IMAGE" >/dev/null 2>&1; then
           TAP_DIR=$(brew --repository oci-native/pkgs 2>/dev/null || true)
@@ -160,13 +170,15 @@ cask "obs-oci" do
 
   caveats <<~EOS
     Runs inside a container via podman (or docker). On first launch the
-    image is built locally from the tap's Containerfile using the arch
-    package this cask downloaded and verified; set OCI_NATIVE_REGISTRY to pull a
-    prebuilt image from your own registry instead. App data lives in
-    ~/.local/share/oci-apps/obs-oci.
+    image is pulled from 8gcr.container-registry.dev/oci-native, falling
+    back to a local build from the tap's Containerfile using the arch
+    package this cask downloaded and verified. Set OCI_NATIVE_REGISTRY
+    to use another registry, or OCI_NATIVE_BUILD=1 to always build
+    locally. App data lives in ~/.local/share/oci-apps/obs-oci.
 
     Uninstalling the cask leaves the image behind (brew's sandbox cannot
     reach the container storage). Remove it with:
-      podman rmi localhost/oci-native/obs-oci:#{version.to_s.tr("+", "-")}
+      podman rmi 8gcr.container-registry.dev/oci-native/obs-oci:#{version.to_s.tr("+", "-")}
+    (or localhost/oci-native/obs-oci:#{version.to_s.tr("+", "-")} if built locally)
   EOS
 end
