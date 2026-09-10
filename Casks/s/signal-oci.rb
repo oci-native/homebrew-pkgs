@@ -87,7 +87,21 @@ cask "signal-oci" do
       mkdir -p "$STATE/.config" "$STATE/.cache"
 
       set -- "$IMAGE" "$@"
-      set -- --security-opt label=disable --shm-size=1g -e HOME=/data -v "$STATE:/data" "$@"
+      # Stable hostname lets Chromium recognise its own stale profile
+      # lock after an unclean exit instead of refusing to start.
+      set -- --security-opt label=disable --shm-size=1g --hostname "$APP" -e HOME=/data -v "$STATE:/data" "$@"
+      # Host fonts, read-only: the image ships only DejaVu; everything
+      # else (indic scripts, emoji, user fonts) comes from the host.
+      # The container's fontconfig scans these paths by default.
+      if [ -d /usr/share/fonts ]; then
+        set -- -v /usr/share/fonts:/usr/local/share/fonts/host:ro "$@"
+      fi
+      if [ -d "$HOME/.local/share/fonts" ]; then
+        set -- -v "$HOME/.local/share/fonts:/data/.local/share/fonts:ro" "$@"
+      fi
+      if [ -d "$HOME/.fonts" ]; then
+        set -- -v "$HOME/.fonts:/data/.fonts:ro" "$@"
+      fi
       if [ "$ENGINE" = podman ]; then
         # keep-groups carries the host's render/video group membership
         # into the container so /dev/dri render nodes stay accessible

@@ -10,4 +10,7 @@ RUN apt-get update \
 
 # The container is the sandbox; Chromium's own sandbox cannot nest inside
 # a rootless userns, hence --no-sandbox.
-ENTRYPOINT ["signal-desktop", "--no-sandbox", "--ozone-platform-hint=auto"]
+# --ozone-platform-hint=auto proved unreliable in brave-oci, so choose
+# the platform from the environment the launcher passes in: wayland when
+# the socket env is present, x11 otherwise.
+ENTRYPOINT ["/bin/sh", "-c", "p=x11; [ -n \"$WAYLAND_DISPLAY\" ] && p=wayland; exec /opt/Signal/signal-desktop --no-sandbox --ozone-platform=$p \"$@\"", "--"]
