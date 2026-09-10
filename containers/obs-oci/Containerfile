@@ -1,0 +1,19 @@
+# The launcher copies the brew-verified arch obs-studio package from
+# the Caskroom into the build context before building.
+FROM docker.io/library/archlinux:latest
+
+ARG APP_VERSION
+LABEL org.opencontainers.image.title="OBS Studio" \
+      org.opencontainers.image.version="${APP_VERSION}"
+
+COPY cask.pkg /tmp/cask.pkg
+RUN pacman -Syu --noconfirm \
+    && pacman -U --noconfirm /tmp/cask.pkg \
+    && pacman -S --noconfirm --needed ttf-dejavu qt6-wayland libfdk-aac \
+    && rm /tmp/cask.pkg \
+    && pacman -Scc --noconfirm
+
+# Prefer native Wayland, fall back to X11
+ENV QT_QPA_PLATFORM="wayland;xcb"
+
+ENTRYPOINT ["obs"]

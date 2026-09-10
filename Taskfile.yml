@@ -18,7 +18,7 @@ tasks:
     vars:
       APP: '{{index .MATCH 0}}'
       VERSION: &cask-version
-        sh: sed -n 's/^ *version "\(.*\)"$/\1/p' "$(find Casks -name '{{.APP}}.rb' -print -quit)"
+        sh: sed -n 's/^ *version "\(.*\)"$/\1/p' "$(find Casks -name '{{.APP}}.rb' -print -quit)" | tr '+' '-'
     preconditions:
       - sh: test -f 'containers/{{.APP}}/Containerfile'
         msg: 'no containers/{{.APP}}/Containerfile'
@@ -31,9 +31,10 @@ tasks:
         cp 'containers/{{.APP}}/Containerfile' "$context/"
         # A Containerfile that copies cask.deb gets the cask's own
         # artifact, brew-fetched and sha256-verified.
-        if grep -q '^COPY cask.deb' 'containers/{{.APP}}/Containerfile'; then
+        artifact=$(grep -oEm1 '^COPY cask\.(deb|pkg)' 'containers/{{.APP}}/Containerfile' | cut -d' ' -f2 || true)
+        if [ -n "$artifact" ]; then
           brew fetch --cask 'oci-native/pkgs/{{.APP}}'
-          cp "$(brew --cache --cask 'oci-native/pkgs/{{.APP}}')" "$context/cask.deb"
+          cp "$(brew --cache --cask 'oci-native/pkgs/{{.APP}}')" "$context/$artifact"
         fi
         # BUILD_CACHE=1 shares layers through the registry (podman only),
         # so ephemeral CI runners reuse layers from previous runs.
