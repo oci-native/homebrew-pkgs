@@ -106,6 +106,10 @@ cask "zoom-oci" do
         RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
         set -- -v "$RUNTIME/pipewire-0:/run/xdg/pipewire-0" "$@"
       fi
+      if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
+        RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+        set -- -e DBUS_SESSION_BUS_ADDRESS=unix:path=/run/xdg/bus -v "$RUNTIME/bus:/run/xdg/bus" "$@"
+      fi
       if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ]; then
         RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
         set -- -e "WAYLAND_DISPLAY=$WAYLAND_DISPLAY" -e XDG_RUNTIME_DIR=/run/xdg -v "$RUNTIME/$WAYLAND_DISPLAY:/run/xdg/$WAYLAND_DISPLAY" "$@"
