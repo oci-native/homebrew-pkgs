@@ -8,6 +8,12 @@ RUN apk add --no-cache \
     mesa-dri-gallium \
     mesa-egl
 
+# Alpine's fontconfig does not scan /usr/local/share/fonts by default;
+# the launcher mounts the host fonts there read-only.
+RUN mkdir -p /etc/fonts/conf.d \
+    && printf '<?xml version="1.0"?>\n<!DOCTYPE fontconfig SYSTEM "fonts.dtd">\n<fontconfig><dir>/usr/local/share/fonts</dir></fontconfig>\n' \
+       > /etc/fonts/conf.d/00-host-fonts.conf
+
 # Prefer native Wayland, fall back to X11 automatically
 ENV GDK_BACKEND=wayland,x11 \
     XDG_RUNTIME_DIR=/run/xdg

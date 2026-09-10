@@ -90,6 +90,15 @@ set), so desktop notifications reach the host; note that dbus EXTERNAL auth only
 works because `--userns=keep-id` keeps the in-container uid equal to the socket
 peer credential.
 
+Host fonts are mounted read-only (`/usr/share/fonts`, `~/.local/share/fonts`,
+`~/.fonts`) at paths the container's fontconfig scans, so non-latin scripts,
+emoji, and user-installed fonts render without baking fonts into images. Images
+keep DejaVu as the offline fallback; alpine-based images need a fontconfig
+conf.d drop-in for `/usr/local/share/fonts` (see `containers/galculator`).
+Launchers also set a stable `--hostname` so apps that record a hostname in
+their profile locks (Chromium and friends) can recognise a stale lock after an
+unclean exit.
+
 ## Adding an OCI app
 
 1. Write `containers/<app>/Containerfile`. Test it locally:
