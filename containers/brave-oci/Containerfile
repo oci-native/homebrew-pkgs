@@ -23,6 +23,9 @@ RUN apt-get update \
 
 # The container is the sandbox; Chromium's own sandbox cannot nest inside
 # a rootless userns, hence --no-sandbox.
-# --ozone-platform-hint=auto still picks X11 here and dies in GLX, so
-# choose the platform from the environment the launcher passes in.
-ENTRYPOINT ["/bin/sh", "-c", "p=x11; [ -n \"$WAYLAND_DISPLAY\" ] && p=wayland; exec brave-browser --no-sandbox --ozone-platform=$p \"$@\"", "--"]
+# --ozone-platform-hint=auto is unreliable here, so choose the platform
+# from the environment the launcher passes in: wayland when the socket
+# env is present, x11 otherwise.
+# Exec the brave binary itself, not the bash wrapper: pid 1 must receive
+# SIGTERM on container stop or the profile is killed mid-write.
+ENTRYPOINT ["/bin/sh", "-c", "p=x11; [ -n \"$WAYLAND_DISPLAY\" ] && p=wayland; exec /opt/brave.com/brave/brave --no-sandbox --ozone-platform=$p \"$@\"", "--"]
