@@ -1,0 +1,31 @@
+# The launcher copies the brew-verified brave-browser .deb from the
+# Caskroom into the build context before building.
+FROM docker.io/library/debian:trixie-slim
+
+ARG APP_VERSION
+LABEL org.opencontainers.image.title="Brave" \
+      org.opencontainers.image.version="${APP_VERSION}"
+
+COPY cask.deb /tmp/cask.deb
+# brave-browser depends on brave-keyring, which lives only in Brave's own
+# apt bucket; fetch the current one from the same TLS endpoint the pinned
+# browser deb comes from.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && base=https://brave-browser-apt-release.s3.brave.com \
+    && keyring=$(curl -fsSL "$base/dists/stable/main/binary-amd64/Packages" \
+         | awk '/^Package: brave-keyring$/{p=1} p&&/^Filename:/{print $2; exit}') \
+    && curl -fsSL -o /tmp/keyring.deb "$base/$keyring" \
+    && apt-get install -y --no-install-recommends /tmp/keyring.deb /tmp/cask.deb \
+       fonts-dejavu libgl1 libegl1 libgl1-mesa-dri libpulse0 \
+    && rm /tmp/cask.deb /tmp/keyring.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+# The container is the sandbox; Chromium's own sandbox cannot nest inside
+# a rootless userns, hence --no-sandbox.
+# --ozone-platform-hint=auto is unreliable here, so choose the platform
+# from the environment the launcher passes in: wayland when the socket
+# env is present, x11 otherwise.
+# Exec the brave binary itself, not the bash wrapper: pid 1 must receive
+# SIGTERM on container stop or the profile is killed mid-write.
+ENTRYPOINT ["/bin/sh", "-c", "p=x11; [ -n \"$WAYLAND_DISPLAY\" ] && p=wayland; exec /opt/brave.com/brave/brave --no-sandbox --ozone-platform=$p \"$@\"", "--"]
