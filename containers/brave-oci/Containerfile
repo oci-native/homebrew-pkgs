@@ -1,0 +1,26 @@
+# The launcher copies the brew-verified brave-browser .deb from the
+# Caskroom into the build context before building.
+FROM docker.io/library/debian:trixie-slim
+
+ARG APP_VERSION
+LABEL org.opencontainers.image.title="Brave" \
+      org.opencontainers.image.version="${APP_VERSION}"
+
+COPY cask.deb /tmp/cask.deb
+# brave-browser depends on brave-keyring, which lives only in Brave's own
+# apt bucket; fetch the current one from the same TLS endpoint the pinned
+# browser deb comes from.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && base=https://brave-browser-apt-release.s3.brave.com \
+    && keyring=$(curl -fsSL "$base/dists/stable/main/binary-amd64/Packages" \
+         | awk '/^Package: brave-keyring$/{p=1} p&&/^Filename:/{print $2; exit}') \
+    && curl -fsSL -o /tmp/keyring.deb "$base/$keyring" \
+    && apt-get install -y --no-install-recommends /tmp/keyring.deb /tmp/cask.deb \
+       fonts-dejavu libgl1 libegl1 libgl1-mesa-dri \
+    && rm /tmp/cask.deb /tmp/keyring.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+# The container is the sandbox; Chromium's own sandbox cannot nest inside
+# a rootless userns, hence --no-sandbox.
+ENTRYPOINT ["brave-browser", "--no-sandbox", "--ozone-platform-hint=auto"]
