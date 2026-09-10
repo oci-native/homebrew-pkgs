@@ -15,7 +15,8 @@ then "Report a vulnerability". Do not open a public issue for anything exploitab
   pinned; the app payload is the same sha256-verified artifact the cask downloaded.
 - Containers run rootless, without the host home directory or host network namespace.
   Only the display socket, GPU and video devices, audio sockets, the dbus session
-  socket (for notifications), and a per-app state directory are mounted.
+  socket (for notifications), host font directories (read-only), and a per-app
+  state directory are mounted.
 
 ## Known trade-offs
 
