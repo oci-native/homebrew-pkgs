@@ -144,8 +144,8 @@ cask "signal-oci" do
     prebuilt image from your own registry instead. App data lives in
     ~/.local/share/oci-apps/signal-oci.
 
-    No dbus or audio is mounted yet, so desktop notifications and calls
-    do not work in this variant.
+    Audio, microphone, and camera are wired through. dbus is not
+    mounted, so desktop notifications stay off.
 
     Uninstalling the cask leaves the image behind (brew's sandbox cannot
     reach the container storage). Remove it with:
