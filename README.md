@@ -41,12 +41,13 @@ works on any distro, Debian or not. The app binary is linked into the Homebrew p
 The `.desktop` entry (with `Exec` rewritten to the brew path) and the icon go under
 `~/.local/share`, which is where launchers, docks, and app grids look.
 
-OCI casks work differently: the cask installs a launcher that builds the app's image
-from a Containerfile in this repo on first run (the install prints the Containerfile so
-you see the recipe), then runs it in a rootless container with the display, GPU, and
-audio/video devices mounted. Set `OCI_NATIVE_REGISTRY` to pull prebuilt images from
-your own registry instead of building. The design is documented in
-[docs/oci-casks.md](docs/oci-casks.md).
+OCI casks work differently: the cask installs a launcher that pulls the app's image
+from `8gcr.container-registry.dev/oci-native` on first run, falling back to building
+it from a Containerfile in this repo when the pull fails (the install prints the
+Containerfile so you see the recipe), then runs it in a rootless container with the
+display, GPU, and audio/video devices mounted. Set `OCI_NATIVE_REGISTRY` to use
+another registry, or `OCI_NATIVE_BUILD=1` to always build locally. The design is
+documented in [docs/oci-casks.md](docs/oci-casks.md).
 
 `brew uninstall --cask <name>` removes the binary link, desktop entry, and icon. `zap`
 also clears the app's user data if you ask for it.

@@ -7,10 +7,13 @@ docker. To the desktop it looks like any other installed app. There is a `.deskt
 entry, an icon, and a binary on `PATH`. Underneath, the app runs in a rootless container
 with only the sockets it needs.
 
-There is no required registry. `brew tap` clones this repo, so every user already has
-the Containerfile; the client downloads the base image and packages itself at build
-time. Users who prefer prebuilt images set `OCI_NATIVE_REGISTRY` and the launcher pulls
-`$OCI_NATIVE_REGISTRY/<app>:<version>` instead of building.
+Images come registry-first: the launcher pulls
+`8gcr.container-registry.dev/oci-native/<app>:<version>` (published by CI on merge to
+main). The registry is still not a hard requirement, though. `brew tap` clones this
+repo, so every user already has the Containerfile, and when the pull fails (offline,
+or the tag is not published) the launcher builds the same image locally. Set
+`OCI_NATIVE_REGISTRY` to pull from another registry, or `OCI_NATIVE_BUILD=1` to skip
+the pull and always build.
 
 Three casks are built this way. `galculator` is the minimal example: the Containerfile
 installs the app from alpine packages. `signal-oci` is the real-world shape: a
